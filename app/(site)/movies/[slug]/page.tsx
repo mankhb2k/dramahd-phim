@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { buildWatchHref } from "@/lib/watch-slug";
 import { cn } from "@/lib/utils";
 import { FavoriteButton } from "@/components/movie/FavoriteButton";
+import { MovieDescription } from "@/components/movie/MovieDescription";
 
 const placeholderPoster =
   "linear-gradient(135deg, oklch(0.45 0.02 264) 0%, oklch(0.25 0.03 280) 100%)";
@@ -38,7 +39,7 @@ export default async function MovieDetailPage({
   return (
     <div className="flex flex-col gap-6 sm:gap-8">
       <div className="flex flex-col gap-6 sm:flex-row sm:gap-8">
-        <div className="relative aspect-[2/3] w-full max-w-[280px] shrink-0 overflow-hidden rounded-xl bg-muted sm:max-w-[240px]">
+        <div className="relative mx-auto aspect-[2/3] w-full max-w-[280px] shrink-0 overflow-hidden rounded-xl bg-muted sm:mx-0 sm:max-w-[240px]">
           {movie.poster ? (
             <Image
               src={movie.poster}
@@ -78,7 +79,7 @@ export default async function MovieDetailPage({
                 "rounded px-2 py-0.5 text-xs font-medium",
                 movie.status === "ONGOING"
                   ? "bg-amber-500/20 text-amber-600 dark:text-amber-400"
-                  : "bg-muted text-muted-foreground"
+                  : "bg-muted text-muted-foreground",
               )}
             >
               {movie.status === "ONGOING" ? "Đang chiếu" : "Hoàn thành"}
@@ -89,22 +90,25 @@ export default async function MovieDetailPage({
                 {movie.episodes.length} tập
               </span>
             )}
-          </div>
-          {movie.description && (
-            <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
-              {movie.description}
-            </p>
-          )}
-          <div className="flex flex-wrap items-center gap-2">
-            {firstEpisode && (
-              <Link
-                href={watchHref}
-                className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-              >
-                <Play className="size-5 fill-current" />
-                Xem phim
-              </Link>
+            <div className="flex flex-wrap items-center gap-2">
+              {firstEpisode && (
+                <Link
+                  href={watchHref}
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                >
+                  <Play className="size-5 fill-current" />
+                  Xem phim
+                </Link>
+              )}
+            </div>
+            {movie.description && (
+              <MovieDescription
+                text={movie.description}
+                maxLength={500}
+                className="text-sm leading-relaxed text-muted-foreground sm:text-base"
+              />
             )}
+
             <FavoriteButton slug={slug} />
           </div>
         </div>

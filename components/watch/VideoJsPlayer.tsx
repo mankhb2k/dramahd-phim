@@ -8,6 +8,7 @@ import {
   Play,
   RotateCcw,
   RotateCw,
+  Settings,
   Volume2,
   VolumeX,
 } from "lucide-react";
@@ -77,7 +78,14 @@ export function VideoJsPlayer({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [isControlsVisible, setIsControlsVisible] = useState(true);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [isSubtitleEnabled, setIsSubtitleEnabled] = useState(
+    Boolean(subtitleSrc),
+  );
   const hideControlsTimerRef = useRef<number | null>(null);
+  const speedOptions = [0.75, 1, 1.25, 1.5, 2] as const;
+  const hasSubtitle = Boolean(subtitleSrc);
 
   const clearHideControlsTimer = () => {
     if (hideControlsTimerRef.current !== null) {
@@ -92,6 +100,7 @@ export function VideoJsPlayer({
     if (!player || player.isDisposed() || player.paused()) return;
     hideControlsTimerRef.current = window.setTimeout(() => {
       setIsControlsVisible(false);
+      setIsSettingsOpen(false);
     }, 3000);
   };
 
@@ -153,6 +162,35 @@ export function VideoJsPlayer({
     }
   };
 
+  const setSubtitleMode = (enabled: boolean) => {
+    const player = playerRef.current;
+    if (!player || player.isDisposed()) return;
+    const textTracks = player.textTracks();
+    if (!textTracks) return;
+    const tracks = textTracks as unknown as ArrayLike<TextTrack>;
+
+    let foundSubtitleTrack = false;
+    for (let i = 0; i < textTracks.length; i += 1) {
+      const track = tracks[i];
+      if (!track) continue;
+      if (track.kind === "subtitles" || track.kind === "captions") {
+        foundSubtitleTrack = true;
+        track.mode = enabled ? "showing" : "disabled";
+      }
+    }
+
+    if (foundSubtitleTrack) {
+      setIsSubtitleEnabled(enabled);
+    }
+  };
+
+  const changePlaybackRate = (nextRate: number) => {
+    const player = playerRef.current;
+    if (!player || player.isDisposed()) return;
+    player.playbackRate(nextRate);
+    setPlaybackRate(nextRate);
+  };
+
   const formatTime = (timeInSeconds: number): string => {
     if (!Number.isFinite(timeInSeconds) || timeInSeconds < 0) return "00:00";
     const totalSeconds = Math.floor(timeInSeconds);
@@ -193,6 +231,7 @@ export function VideoJsPlayer({
       playerRef.current = player;
       setIsReady(true);
       setIsControlsVisible(true);
+      setIsSettingsOpen(false);
 
       const syncState = () => {
         setCurrentTime(player.currentTime() ?? 0);
@@ -201,6 +240,24 @@ export function VideoJsPlayer({
         setIsMuted(player.muted() ?? false);
         setIsPlaying(!player.paused());
         setIsFullscreen(player.isFullscreen() ?? false);
+        setPlaybackRate(player.playbackRate() ?? 1);
+
+        const textTracks = player.textTracks();
+        let subtitleShowing = false;
+        if (textTracks) {
+          const tracks = textTracks as unknown as ArrayLike<TextTrack>;
+          for (let i = 0; i < textTracks.length; i += 1) {
+            const track = tracks[i];
+            if (!track) continue;
+            if (
+              (track.kind === "subtitles" || track.kind === "captions") &&
+              track.mode === "showing"
+            ) {
+              subtitleShowing = true;
+            }
+          }
+        }
+        setIsSubtitleEnabled(subtitleShowing);
       };
       syncState();
 
@@ -235,6 +292,7 @@ export function VideoJsPlayer({
           },
           false,
         );
+        window.setTimeout(() => setSubtitleMode(true), 0);
       }
 
       if (vastTagUrl) {
@@ -271,6 +329,9 @@ export function VideoJsPlayer({
       window.cancelAnimationFrame(rafId);
       clearHideControlsTimer();
       setIsReady(false);
+      setIsSettingsOpen(false);
+      setPlaybackRate(1);
+      setIsSubtitleEnabled(Boolean(subtitleSrc));
       if (playerRef.current && !playerRef.current.isDisposed()) {
         playerRef.current.dispose();
       }
@@ -286,131 +347,249 @@ export function VideoJsPlayer({
       onTouchStart={revealControls}
       onClick={revealControls}
     >
+      {/* Core video element managed by Video.js */}
       <video
         ref={videoRef}
         className="video-js vjs-big-play-centered size-full rounded-xl"
       />
 
       {isReady && (
-        <div
-          className={`absolute left-1/2 top-1/2 z-30 flex -translate-x-1/2 -translate-y-1/2 items-center gap-3 transition-opacity duration-200 ${
-            isControlsVisible || !isPlaying
-              ? "opacity-100"
-              : "pointer-events-none opacity-0"
-          }`}
-        >
-          <button
-            type="button"
-            onClick={() => seekBy(-10)}
-            className="inline-flex items-center gap-1 rounded-full bg-black/70 px-3 py-2 text-xs font-medium text-white backdrop-blur transition-colors hover:bg-black/85"
-            aria-label="Lùi 10 giây"
+        <>
+          {/* Center overlay controls: seek/play/seek */}
+          <div
+            className={`absolute left-1/2 top-1/2 z-30 flex -translate-x-1/2 -translate-y-1/2 items-center gap-3 transition-opacity duration-200 ${
+              isControlsVisible || !isPlaying
+                ? "opacity-100"
+                : "pointer-events-none opacity-0"
+            }`}
           >
-            <RotateCcw className="size-4" />
-            -10s
-          </button>
+            <button
+              type="button"
+              onClick={() => seekBy(-5)}
+              className="inline-flex size-10 items-center justify-center rounded-full bg-black/60 text-white shadow-lg backdrop-blur-sm transition-colors hover:bg-black/75"
+              aria-label="Lùi 5 giây"
+            >
+              <span className="relative flex size-full items-center justify-center">
+                <RotateCcw className="size-6" />
+                <span className="pointer-events-none absolute text-[8px] font-bold leading-none">
+                  5
+                </span>
+              </span>
+            </button>
 
-          <button
-            type="button"
-            onClick={togglePlay}
-            className="inline-flex size-20 items-center justify-center rounded-full bg-white/90 text-black shadow-2xl transition hover:bg-white"
-            aria-label={isPlaying ? "Tạm dừng video" : "Phát video"}
-          >
-            {isPlaying ? (
-              <Pause className="size-9 fill-current" />
-            ) : (
-              <Play className="size-9 fill-current pl-1" />
-            )}
-          </button>
+            <button
+              type="button"
+              onClick={togglePlay}
+              className="inline-flex size-16 items-center justify-center rounded-full bg-black/60 text-white shadow-2xl backdrop-blur-sm transition-colors hover:bg-black/75"
+              aria-label={isPlaying ? "Tạm dừng video" : "Phát video"}
+            >
+              {isPlaying ? (
+                <span className="flex size-full items-center justify-center">
+                  <Pause className="size-9 fill-current" />
+                </span>
+              ) : (
+                <span className="flex size-full items-center justify-center">
+                  <Play className="size-9 fill-current" />
+                </span>
+              )}
+            </button>
 
-          <button
-            type="button"
-            onClick={() => seekBy(10)}
-            className="inline-flex items-center gap-1 rounded-full bg-black/70 px-3 py-2 text-xs font-medium text-white backdrop-blur transition-colors hover:bg-black/85"
-            aria-label="Tiến 10 giây"
-          >
-            <RotateCw className="size-4" />
-            +10s
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => seekBy(5)}
+              className="inline-flex size-10 items-center justify-center rounded-full bg-black/60 text-white shadow-lg backdrop-blur-sm transition-colors hover:bg-black/75"
+              aria-label="Tiến 5 giây"
+            >
+              <span className="relative flex size-full items-center justify-center">
+                <RotateCw className="size-6" />
+                <span className="pointer-events-none absolute text-[8px] font-bold leading-none">
+                  5
+                </span>
+              </span>
+            </button>
+          </div>
+        </>
       )}
 
-      <div
-        className={`absolute inset-x-0 bottom-0 z-20 space-y-2 bg-gradient-to-t from-black/85 via-black/45 to-transparent p-3 text-white transition-opacity duration-200 ${
-          isControlsVisible || !isPlaying
-            ? "opacity-100"
-            : "pointer-events-none opacity-0"
-        }`}
-      >
-        <div className="flex items-center gap-2">
-          <span className="ml-auto text-xs tabular-nums text-white/90">
-            {formatTime(currentTime)} / {formatTime(duration)}
-          </span>
-        </div>
+      {isReady && (
+        <>
+          {/* Bottom control bar: time, progress, audio, settings, fullscreen */}
+          <div
+            className={`absolute inset-x-0 bottom-0 z-40 space-y-2 bg-gradient-to-t from-black/85 via-black/45 to-transparent p-3 text-white transition-opacity duration-200 ${
+              isControlsVisible || !isPlaying
+                ? "opacity-100"
+                : "pointer-events-none opacity-0"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <span className="ml-auto text-xs tabular-nums text-white/90">
+                {formatTime(currentTime)} / {formatTime(duration)}
+              </span>
+            </div>
 
-        <div className="space-y-2">
-          <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-zinc-600">
-            <div
-              className="absolute inset-y-0 left-0 rounded-full bg-zinc-300"
-              style={{ width: `${progressPercent}%` }}
-            />
-            <input
-              type="range"
-              min={0}
-              max={duration || 0}
-              step={0.1}
-              value={Math.min(currentTime, duration || 0)}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                onSeek(Number(e.target.value))
-              }
-              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-              aria-label="Thanh thời lượng video"
-            />
+            <div className="space-y-2">
+              {/* Timeline/progress seek bar */}
+              <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-zinc-600">
+                <div
+                  className="absolute inset-y-0 left-0 rounded-full bg-zinc-300"
+                  style={{ width: `${progressPercent}%` }}
+                />
+                <input
+                  type="range"
+                  min={0}
+                  max={duration || 0}
+                  step={0.1}
+                  value={Math.min(currentTime, duration || 0)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    onSeek(Number(e.target.value))
+                  }
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                  aria-label="Thanh thời lượng video"
+                />
+              </div>
+
+              {/* Utility controls row */}
+              <div className="relative flex w-full items-center gap-2">
+                <button
+                  type="button"
+                  onClick={toggleMute}
+                  className="inline-flex size-8 items-center justify-center rounded-full bg-white/15 transition-colors hover:bg-white/25"
+                  aria-label={isMuted ? "Bật tiếng" : "Tắt tiếng"}
+                >
+                  {isMuted || volume === 0 ? (
+                    <VolumeX className="size-4" />
+                  ) : (
+                    <Volume2 className="size-4" />
+                  )}
+                </button>
+
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={isMuted ? 0 : volume}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    onVolumeChange(Number(e.target.value))
+                  }
+                  className="h-1.5 w-28 cursor-pointer accent-zinc-300"
+                  aria-label="Âm lượng"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setIsSettingsOpen((prev: boolean) => !prev)}
+                  className="relative ml-auto inline-flex size-8 items-center justify-center rounded-full bg-white/15 transition-colors hover:bg-white/25"
+                  aria-label="Mở cài đặt phát video"
+                >
+                  <Settings className="size-4" />
+                  <span className="pointer-events-none absolute -right-0.5 -top-0.5 rounded bg-red-600 px-1 text-[9px] font-semibold leading-3 text-white shadow">
+                    HD
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={toggleFullscreen}
+                  className="inline-flex size-8 items-center justify-center rounded-full bg-white/15 transition-colors hover:bg-white/25"
+                  aria-label={
+                    isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"
+                  }
+                >
+                  {isFullscreen ? (
+                    <Minimize className="size-4" />
+                  ) : (
+                    <Maximize className="size-4" />
+                  )}
+                </button>
+
+                {/* Popup settings panel: quality, speed, subtitle */}
+                {isSettingsOpen && (
+                  <div className="absolute bottom-10 right-4 z-40 min-w-52 space-y-3 rounded-lg border border-white/20 bg-black/85 p-3 text-xs shadow-xl backdrop-blur-md">
+                    <div>
+                      <p className="mb-2 text-white/70">Chất lượng</p>
+                      <button
+                        type="button"
+                        className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-white transition-colors hover:bg-white/10"
+                      >
+                        <span className="pr-2">Auto</span>
+                        <span className="rounded bg-red-600 px-1 py-0.5 text-[10px] font-semibold leading-none text-white">
+                          HD
+                        </span>
+                      </button>
+                    </div>
+
+                    <div>
+                      <p className="mb-2 text-white/70">Tốc độ phát</p>
+                      <div className="grid grid-cols-3 gap-1.5 rounded-md p-1">
+                        {speedOptions.map(
+                          (rate: (typeof speedOptions)[number]) => (
+                            <button
+                              key={rate}
+                              type="button"
+                              onClick={() => changePlaybackRate(rate)}
+                              className={`rounded border px-1 py-1 text-center transition-colors ${
+                                playbackRate === rate
+                                  ? "border-white/80 bg-white/30 text-white ring-1 ring-white/50"
+                                  : "border-transparent bg-transparent text-white/35 hover:border-white/20 hover:bg-white/10 hover:text-white/65"
+                              }`}
+                            >
+                              {rate}x
+                            </button>
+                          ),
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="mb-2 text-white/70">Phụ đề</p>
+                      <button
+                        type="button"
+                        onClick={() => setSubtitleMode(!isSubtitleEnabled)}
+                        disabled={!hasSubtitle}
+                        className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left transition-colors ${
+                          hasSubtitle
+                            ? "text-white hover:bg-white/10"
+                            : "cursor-not-allowed text-white/40"
+                        }`}
+                      >
+                        <span className="inline-flex items-center gap-2">
+                          <span
+                            className={`relative inline-flex size-4 items-center justify-center rounded-full border transition-colors ${
+                              !hasSubtitle
+                                ? "border-white/25"
+                                : isSubtitleEnabled
+                                  ? "border-emerald-400"
+                                  : "border-white/60"
+                            }`}
+                          >
+                            <span
+                              className={`size-1.5 rounded-full transition-colors ${
+                                !hasSubtitle
+                                  ? "bg-white/25"
+                                  : isSubtitleEnabled
+                                    ? "bg-emerald-400"
+                                    : "bg-white/70"
+                              }`}
+                            />
+                          </span>
+                          <span className="text-[10px] font-semibold leading-none text-white/80">
+                            {hasSubtitle
+                              ? isSubtitleEnabled
+                                ? "Bật"
+                                : "Tắt"
+                              : "Unavailable"}
+                          </span>
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={toggleMute}
-              className="inline-flex size-8 items-center justify-center rounded-full bg-white/15 transition-colors hover:bg-white/25"
-              aria-label={isMuted ? "Bật tiếng" : "Tắt tiếng"}
-            >
-              {isMuted || volume === 0 ? (
-                <VolumeX className="size-4" />
-              ) : (
-                <Volume2 className="size-4" />
-              )}
-            </button>
-
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={isMuted ? 0 : volume}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                onVolumeChange(Number(e.target.value))
-              }
-              className="h-1.5 w-28 cursor-pointer accent-zinc-300"
-              aria-label="Âm lượng"
-            />
-
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              className="ml-auto inline-flex size-8 items-center justify-center rounded-full bg-white/15 transition-colors hover:bg-white/25"
-              aria-label={
-                isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"
-              }
-            >
-              {isFullscreen ? (
-                <Minimize className="size-4" />
-              ) : (
-                <Maximize className="size-4" />
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }

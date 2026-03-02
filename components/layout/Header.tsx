@@ -7,6 +7,7 @@ import { ChevronDown, Search, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth";
 
+// Genre list: used for visible tabs + overflow dropdown
 const genreLinks = [
   { href: "/", label: "Home" },
   { href: "/the-loai/tinh-cam", label: "Tình cảm" },
@@ -22,13 +23,21 @@ const genreLinks = [
 ] as const;
 
 const MIN_VISIBLE_GENRES = 2;
-/** sm mobile: cần ~4 item. Nav width ≈ row - (dropdown 36 + profile 36 + gap 8) = row - 80. Dùng ~60px/item để 240px → 4. */
-const ESTIMATED_GENRE_WIDTH_MOBILE = 60;
 const ESTIMATED_GENRE_WIDTH_DESKTOP = 92;
 /** Khu vực bên phải mobile: dropdown (size-9) + profile (size-9) + gap-2 */
 const MOBILE_RIGHT_WIDTH = 36 + 36 + 8;
 
+/**
+ * Ước lượng width mỗi item mobile theo độ dài label để tránh hiện nửa chữ.
+ * 26px ~ padding + khoảng icon/spacing, 7px ~ average glyph width ở text-sm.
+ */
+const estimateMobileGenreWidth = (label: string): number => {
+  const charCount = Array.from(label).length;
+  return 26 + charCount * 7;
+};
+
 export function Header() {
+  // ----- Global header state -----
   const user = useAuthStore((s) => s.user);
   const [genreMenuOpen, setGenreMenuOpen] = useState(false);
   const [visibleGenreCount, setVisibleGenreCount] = useState(10);
@@ -36,7 +45,7 @@ export function Header() {
   const genreNavRefDesktop = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
 
-  // Responsive: đẩy thể loại vào dropdown khi không đủ chỗ (mobile dùng nav width thực để đạt ~4 item trên sm)
+  // ----- Responsive genre allocation (visible tabs vs dropdown) -----
   useEffect(() => {
     const updateVisible = () => {
       const mobileW = genreNavRefMobile.current?.offsetWidth ?? 0;
@@ -46,14 +55,26 @@ export function Header() {
       if (w <= 0) return;
 
       if (isMobile) {
+        // Mobile: estimate each label width to avoid cut-off text
         const navWidth = Math.max(0, w - MOBILE_RIGHT_WIDTH);
-        const count = Math.floor(navWidth / ESTIMATED_GENRE_WIDTH_MOBILE);
+        let usedWidth = 0;
+        let count = 0;
+
+        for (let i = 0; i < genreLinks.length; i += 1) {
+          const itemWidth = estimateMobileGenreWidth(genreLinks[i].label);
+          const gapWidth = i > 0 ? 4 : 0; // gap-1
+          if (usedWidth + gapWidth + itemWidth > navWidth) break;
+          usedWidth += gapWidth + itemWidth;
+          count += 1;
+        }
+
         const clamped = Math.max(
-          4, // sm mobile: tối thiểu 4 item
+          MIN_VISIBLE_GENRES,
           Math.min(genreLinks.length, count),
         );
         setVisibleGenreCount(clamped);
       } else {
+        // Desktop: estimate with fixed width per tab
         const count = Math.floor(w / ESTIMATED_GENRE_WIDTH_DESKTOP);
         const clamped = Math.max(
           MIN_VISIBLE_GENRES,
@@ -81,6 +102,7 @@ export function Header() {
   const isProfileActive =
     pathname === "/profile" || pathname.startsWith("/profile/");
 
+  // ----- Reusable dropdown "more genres" (mobile + desktop) -----
   const dropdownContent = moreGenres.length > 0 && (
     <>
       <button
@@ -131,6 +153,7 @@ export function Header() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* ---------- MOBILE: Hàng 1 = Logo + Search, Hàng 2 = Thể loại + Dropdown + Profile ---------- */}
         <div className="flex flex-col sm:hidden">
+          {/* Mobile row 1: brand + search */}
           <div className="flex h-12 min-h-12 items-center gap-3 py-2">
             <Link
               href="/"
@@ -158,8 +181,9 @@ export function Header() {
           </div>
           <div
             ref={genreNavRefMobile}
-            className="flex h-11 shrink-0 items-center justify-between gap-2 border-t border-border/40"
+            className="relative left-1/2 flex h-11 w-[calc(100vw-8px)] shrink-0 -translate-x-1/2 items-center justify-between gap-2 border-t border-border/40"
           >
+            {/* Mobile row 2-left: visible genre tabs */}
             <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto scrollbar-hide">
               {visibleGenres.map((link) => (
                 <Link
@@ -176,6 +200,7 @@ export function Header() {
                 </Link>
               ))}
             </nav>
+            {/* Mobile row 2-right: overflow dropdown + profile */}
             <div className="relative flex shrink-0 items-center gap-0.5">
               {dropdownContent}
               <Link
@@ -194,6 +219,7 @@ export function Header() {
 
         {/* ---------- WEB: Hàng 1 = Logo + Search + Profile, Hàng 2 = Thể loại căn giữa + Dropdown ---------- */}
         <div className="hidden sm:block">
+          {/* Desktop row 1: brand + search + profile */}
           <div className="flex h-14 min-h-14 items-center gap-4 py-2">
             <Link
               href="/"
@@ -234,6 +260,7 @@ export function Header() {
             className="flex h-11 shrink-0 items-center border-t border-border/40"
           >
             <div className="w-9 shrink-0" aria-hidden="true" />
+            {/* Desktop row 2-center: visible genre tabs */}
             <nav className="flex min-w-0 flex-1 justify-evenly items-center gap-4 overflow-x-auto scrollbar-hide px-2">
               {visibleGenres.map((link) => (
                 <Link
@@ -250,6 +277,7 @@ export function Header() {
                 </Link>
               ))}
             </nav>
+            {/* Desktop row 2-right: overflow dropdown */}
             {moreGenres.length > 0 ? (
               <div className="relative w-9 shrink-0 flex items-center justify-center">
                 {dropdownContent}
