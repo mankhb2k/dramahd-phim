@@ -38,10 +38,12 @@ export async function GET(
 
       const contents = res.Contents ?? [];
       for (const obj of contents) {
-        if (obj.Key) {
-          objectCount += 1;
-          totalSizeBytes += Number(obj.Size ?? 0);
-        }
+        const key = obj.Key;
+        if (!key) continue;
+        if (key.endsWith(".keep")) continue;
+        if (key.endsWith("/")) continue;
+        objectCount += 1;
+        totalSizeBytes += Number(obj.Size ?? 0);
       }
       continuationToken = res.NextContinuationToken;
       if (objectCount >= MAX_OBJECTS) break;

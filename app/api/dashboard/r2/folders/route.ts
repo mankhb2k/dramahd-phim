@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     : getR2Config();
   const client = getR2Client();
 
-  const parentPrefix = parsed.data.parentPrefix.replace(/^\/+/, "");
+  const parentPrefix = parsed.data.parentPrefix.replace(/^\/+/, "").replace(/\/+$/, "") || "";
   const name = normalizeSegment(parsed.data.name);
   if (!name || name.endsWith("-") || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)) {
     return NextResponse.json(
@@ -50,36 +50,25 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
-  const folderPrefix = parentPrefix.endsWith("/")
-    ? `${parentPrefix}${name}/`
+  const folderPrefix = parentPrefix === ""
+    ? `${name}/`
     : `${parentPrefix}/${name}/`;
+  const key = `${folderPrefix}.keep`;
 
   try {
     await client.send(
-      new CopyObjectCommand({
+      new PutObjectCommand({
         Bucket: cfg.bucket,
-        CopySource: `${cfg.bucket}/.keep`,
-        Key: `${folderPrefix}.keep`,
+        Key: key,
+        Body: new Uint8Array(0),
       }),
     );
-  } catch {
-    try {
-      await client.send(
-        new CopyObjectCommand({
-          Bucket: cfg.bucket,
-          CopySource: `${cfg.bucket}/`,
-          Key: `${folderPrefix}.keep`,
-        }),
-      );
-    } catch {
-      await client.send(
-        new PutObjectCommand({
-          Bucket: cfg.bucket,
-          Key: `${folderPrefix}.keep`,
-          Body: new Uint8Array(0),
-        }),
-      );
-    }
+  } catch (err) {
+    console.error("[POST /api/dashboard/r2/folders] PutObject failed:", err);
+    return NextResponse.json(
+      { error: "Không thể tạo thư mục trên R2. Kiểm tra quyền và tên bucket." },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json({

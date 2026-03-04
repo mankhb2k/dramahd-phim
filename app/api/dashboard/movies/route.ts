@@ -31,6 +31,7 @@ const serverSchema = z.object({
 const episodeSchema = z.object({
   episodeNumber: z.coerce.number().int().min(1, "Số tập phải >= 1"),
   name: z.string().optional(),
+  subtitleUrl: z.string().optional(),
   servers: z.array(serverSchema).default([]),
 });
 
@@ -38,6 +39,7 @@ const createMovieSchema = z.object({
   title: z.string().min(1, "Tiêu đề không được để trống"),
   slug: z.string().min(1).optional(),
   channel: z.string().min(1).default("nsh"),
+  audioType: z.enum(["NONE", "SUB", "DUBBED"]).optional().default("NONE"),
   originalTitle: z.string().optional(),
   description: z.string().optional(),
   poster: z
@@ -102,6 +104,7 @@ export async function POST(request: NextRequest) {
         backdrop: backdropUrl ?? null,
         year: data.year ?? null,
         status: data.status,
+        audioType: data.audioType ?? "NONE",
         genres: data.genreIds.length
           ? { connect: data.genreIds.map((id) => ({ id })) }
           : undefined,
@@ -115,6 +118,7 @@ export async function POST(request: NextRequest) {
                   episodeNumber: ep.episodeNumber,
                   watchSlug: `tap-${ep.episodeNumber}`,
                   name: ep.name?.trim() || `Tập ${ep.episodeNumber}`,
+                  subtitleUrl: ep.subtitleUrl?.trim() || null,
                   servers:
                     ep.servers.length > 0
                       ? {

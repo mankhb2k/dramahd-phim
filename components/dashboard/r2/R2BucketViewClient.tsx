@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Info, Loader2 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useR2ManagerStore, type R2FolderItem } from "@/lib/stores/r2-manager-store";
 import { CreateFolderDialog } from "@/components/dashboard/r2/CreateFolderDialog";
 import { DeleteFolderConfirm } from "@/components/dashboard/r2/DeleteFolderConfirm";
@@ -54,6 +54,8 @@ export function R2BucketViewClient({
   const [moveFolderTarget, setMoveFolderTarget] = useState<R2FolderItem | null>(null);
   const [deleteFolderTarget, setDeleteFolderTarget] = useState<R2FolderItem | null>(null);
   const [folderActionLoading, setFolderActionLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
 
   const prefixFromUrl = pathSegmentsToPrefix(pathSegments);
 
@@ -140,7 +142,9 @@ export function R2BucketViewClient({
         if (!res.ok) {
           throw new Error(json.error ?? "Không thể tải danh sách object từ R2");
         }
-        setData(json.folders ?? [], json.files ?? []);
+        const nextFolders = Array.isArray(json.folders) ? json.folders : [];
+        const nextFiles = Array.isArray(json.files) ? json.files : [];
+        setData(nextFolders, nextFiles);
       } catch (err) {
         setError(
           err instanceof Error
@@ -316,11 +320,43 @@ export function R2BucketViewClient({
     [currentPrefix, bucketSlug, prefixFromUrl, loadObjects],
   );
 
-  const handleOpenUploadGuide = () => {
-    window.alert(
-      "Upload R2: gọi /api/dashboard/r2/sign-upload để lấy URL, PUT file lên R2 rồi gọi /api/dashboard/videos/finalize để gắn vào tập phim.",
-    );
-  };
+  const handleUploadClick = useCallback(() => {
+    uploadInputRef.current?.click();
+  }, []);
+
+  const handleUploadFiles = useCallback(
+    async (files: FileList | null) => {
+      if (!files || files.length === 0) return;
+      setUploading(true);
+      setError(null);
+      try {
+        const formData = new FormData();
+        formData.set("bucket", bucketSlug);
+        formData.set("prefix", prefixFromUrl);
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          if (file?.name) formData.append("file", file);
+        }
+        const res = await fetch("/api/dashboard/r2/upload", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error ?? "Upload thất bại");
+        }
+        await loadObjects(prefixFromUrl);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Lỗi khi upload file");
+      } finally {
+        setUploading(false);
+        if (uploadInputRef.current) {
+          uploadInputRef.current.value = "";
+        }
+      }
+    },
+    [bucketSlug, prefixFromUrl, loadObjects],
+  );
 
   const handleMoveSelected = async () => {
     if (selectedKeys.length === 0) return;
@@ -346,7 +382,7 @@ export function R2BucketViewClient({
         });
         if (!res.ok) throw new Error("Không thể di chuyển một số file");
       }
-      await loadObjects();
+      await loadObjects(prefixFromUrl);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Có lỗi xảy ra khi di chuyển file",
@@ -355,6 +391,37 @@ export function R2BucketViewClient({
       setLoading(false);
     }
   };
+
+  const handleRenameSubmit = useCallback(
+    async (fromKey: string, newName: string) => {
+      if (!newName.trim()) return;
+      try {
+        setError(null);
+        setLoading(true);
+        const res = await fetch("/api/dashboard/r2/rename", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bucket: bucketSlug,
+            fromKey,
+            newName: newName.trim(),
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error ?? "Không thể đổi tên file");
+        }
+        await loadObjects(prefixFromUrl);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Có lỗi xảy ra khi đổi tên file",
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [bucketSlug, prefixFromUrl, loadObjects],
+  );
 
   const handleDeleteSelected = async () => {
     if (selectedKeys.length === 0) return;
@@ -374,7 +441,7 @@ export function R2BucketViewClient({
         const data = await res.json();
         throw new Error(data.error ?? "Không thể xóa file");
       }
-      await loadObjects();
+      await loadObjects(prefixFromUrl);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Có lỗi xảy ra khi xóa file",
@@ -494,10 +561,17 @@ export function R2BucketViewClient({
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col">
+          <input
+            ref={uploadInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(e) => handleUploadFiles(e.target.files)}
+          />
           <R2ActionsToolbar
             onCreateFolder={handleOpenCreateFolder}
-            onRefresh={loadObjects}
-            onOpenUploadGuide={handleOpenUploadGuide}
+            onRefresh={() => loadObjects(prefixFromUrl)}
+            onOpenUploadGuide={handleUploadClick}
             onSyncDb={handleSyncDb}
             dataSource={dataSource}
             onDataSourceChange={setDataSource}
@@ -514,6 +588,12 @@ export function R2BucketViewClient({
                 {syncMessage}
               </div>
             )}
+            {uploading && (
+              <div className="mb-3 flex items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-xs text-foreground">
+                <Loader2 className="size-4 animate-spin" />
+                Đang upload file...
+              </div>
+            )}
 
             {isLoading ? (
               <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
@@ -523,6 +603,7 @@ export function R2BucketViewClient({
             ) : (
               <FileTable
                 onMoveSelected={handleMoveSelected}
+                onRenameSubmit={handleRenameSubmit}
                 onDeleteSelected={handleDeleteSelected}
               />
             )}

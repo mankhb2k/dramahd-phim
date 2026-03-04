@@ -85,12 +85,19 @@ export function normalizeSegment(input: string): string {
     .replace(/^-|-$/g, "");
 }
 
-function sanitizeFilename(filename: string): string {
+export function sanitizeFilename(filename: string): string {
   return filename
     .toLowerCase()
     .replace(/[^a-z0-9._-]+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+/** Key cho upload file vào thư mục (prefix) bất kỳ. */
+export function buildR2ObjectKey(prefix: string, filename: string): string {
+  const p = prefix.replace(/^\/+|\/+$/g, "");
+  const name = sanitizeFilename(filename) || "file";
+  return p ? `${p}/${name}` : name;
 }
 
 export function buildR2VideoKey(params: {

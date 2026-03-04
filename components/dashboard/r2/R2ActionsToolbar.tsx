@@ -122,7 +122,7 @@ export function R2ActionsToolbar({
           onClick={onOpenUploadGuide}
           className="inline-flex items-center gap-1 rounded bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
         >
-          Upload video R2
+          Upload file
         </button>
       </div>
     </div>

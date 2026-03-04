@@ -3,8 +3,16 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { Plus, Trash2, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, Cloud, Subtitles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  R2MovieFolderPickerModal,
+  type R2ApplyItem,
+} from "@/components/dashboard/r2/R2MovieFolderPickerModal";
+import {
+  R2SubtitleFolderPickerModal,
+  type R2SubApplyItem,
+} from "@/components/dashboard/r2/R2SubtitleFolderPickerModal";
 
 type Genre = { id: number; slug: string; name: string };
 type Tag = { id: number; slug: string; name: string };
@@ -28,6 +36,7 @@ type EpisodeRow = {
   id: string;
   episodeNumber: number;
   name: string;
+  subtitleUrl: string;
   servers: ServerRow[];
 };
 
@@ -42,12 +51,14 @@ type MovieResponse = {
   backdrop: string | null;
   year: number | null;
   status: "ONGOING" | "COMPLETED";
+  audioType?: "NONE" | "SUB" | "DUBBED";
   genres: Genre[];
   tags: Tag[];
   episodes: Array<{
     id: number;
     episodeNumber: number;
     name: string;
+    subtitleUrl?: string | null;
     servers: Array<{
       id: number;
       name: string;
@@ -94,12 +105,12 @@ export default function EditMoviePage() {
   const [backdrop, setBackdrop] = useState("");
   const [year, setYear] = useState("");
   const [status, setStatus] = useState<"ONGOING" | "COMPLETED">("ONGOING");
+  const [audioType, setAudioType] = useState<"NONE" | "SUB" | "DUBBED">("NONE");
   const [genreIds, setGenreIds] = useState<number[]>([]);
   const [tagIds, setTagIds] = useState<number[]>([]);
   const [episodes, setEpisodes] = useState<EpisodeRow[]>([]);
-  const [uploadingByServerId, setUploadingByServerId] = useState<
-    Record<string, boolean>
-  >({});
+  const [r2MoviePickerOpen, setR2MoviePickerOpen] = useState(false);
+  const [r2SubPickerOpen, setR2SubPickerOpen] = useState(false);
 
   const fetchMovieAndOptions = useCallback(async () => {
     if (!slug) return;
@@ -127,6 +138,7 @@ export default function EditMoviePage() {
       setBackdrop(movie.backdrop ?? "");
       setYear(movie.year != null ? String(movie.year) : "");
       setStatus(movie.status);
+      setAudioType(movie.audioType ?? "NONE");
       setGenreIds(movie.genres.map((g) => g.id));
       setTagIds(movie.tags.map((t) => t.id));
       setEpisodes(
@@ -134,22 +146,23 @@ export default function EditMoviePage() {
           id: genId(),
           episodeNumber: ep.episodeNumber,
           name: ep.name ?? "",
+          subtitleUrl: ep.subtitleUrl ?? "",
           servers: ep.servers.map((s) => ({
             id: genId(),
             name: s.name,
             embedUrl: s.embedUrl,
-              playbackUrl: s.playbackUrl ?? "",
-              objectKey: s.objectKey ?? "",
-              sourceType: s.sourceType,
-              storageProvider: s.storageProvider,
-              subtitleUrl: s.subtitleUrl ?? "",
-              vastTagUrl: s.vastTagUrl ?? "",
-              mimeType: s.mimeType ?? "",
-              fileSizeBytes: s.fileSizeBytes ?? undefined,
+            playbackUrl: s.playbackUrl ?? "",
+            objectKey: s.objectKey ?? "",
+            sourceType: s.sourceType,
+            storageProvider: s.storageProvider,
+            subtitleUrl: s.subtitleUrl ?? "",
+            vastTagUrl: s.vastTagUrl ?? "",
+            mimeType: s.mimeType ?? "",
+            fileSizeBytes: s.fileSizeBytes ?? undefined,
             priority: s.priority,
-              isActive: s.isActive,
+            isActive: s.isActive,
           })),
-        }))
+        })),
       );
     } finally {
       setLoading(false);
@@ -162,12 +175,12 @@ export default function EditMoviePage() {
 
   const toggleGenre = (id: number) => {
     setGenreIds((prev) =>
-      prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id],
     );
   };
   const toggleTag = (id: number) => {
     setTagIds((prev) =>
-      prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id],
     );
   };
 
@@ -178,7 +191,13 @@ export default function EditMoviePage() {
         : Math.max(...episodes.map((e) => e.episodeNumber)) + 1;
     setEpisodes((prev) => [
       ...prev,
-      { id: genId(), episodeNumber: nextNum, name: "", servers: [] },
+      {
+        id: genId(),
+        episodeNumber: nextNum,
+        name: "",
+        subtitleUrl: "",
+        servers: [],
+      },
     ]);
   };
   const removeEpisode = (id: string) => {
@@ -187,10 +206,10 @@ export default function EditMoviePage() {
   const updateEpisode = (
     id: string,
     field: keyof EpisodeRow,
-    value: number | string | ServerRow[]
+    value: number | string | ServerRow[],
   ) => {
     setEpisodes((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, [field]: value } : e))
+      prev.map((e) => (e.id === id ? { ...e, [field]: value } : e)),
     );
   };
   const addServer = (episodeId: string) => {
@@ -217,8 +236,8 @@ export default function EditMoviePage() {
                 },
               ],
             }
-          : e
-      )
+          : e,
+      ),
     );
   };
   const removeServer = (episodeId: string, serverId: string) => {
@@ -226,15 +245,97 @@ export default function EditMoviePage() {
       prev.map((e) =>
         e.id === episodeId
           ? { ...e, servers: e.servers.filter((s) => s.id !== serverId) }
-          : e
-      )
+          : e,
+      ),
     );
   };
+  const handleR2Apply = useCallback((items: R2ApplyItem[]) => {
+    if (items.length === 0) return;
+    const maxEp = Math.max(...items.map((i: R2ApplyItem) => i.episodeNumber));
+    setEpisodes((prev) => {
+      const byNum = new Map(prev.map((e) => [e.episodeNumber, e]));
+      for (let n = 1; n <= maxEp; n++) {
+        if (!byNum.has(n)) {
+          byNum.set(n, {
+            id: genId(),
+            episodeNumber: n,
+            name: "",
+            subtitleUrl: "",
+            servers: [],
+          });
+        }
+      }
+      const next = Array.from(byNum.values()).sort(
+        (a, b) => a.episodeNumber - b.episodeNumber,
+      );
+      return next.map((ep) => {
+        const item = items.find(
+          (i: R2ApplyItem) => i.episodeNumber === ep.episodeNumber,
+        );
+        if (!item) return ep;
+        const existingR2 = ep.servers.find((s) => s.storageProvider === "R2");
+        if (existingR2) {
+          return {
+            ...ep,
+            servers: ep.servers.map((s) =>
+              s.id === existingR2.id
+                ? {
+                    ...s,
+                    name: s.name || "R2",
+                    objectKey: item.objectKey,
+                    playbackUrl: item.playbackUrl,
+                    embedUrl: item.playbackUrl,
+                    storageProvider: "R2" as const,
+                    sourceType: "DIRECT_VIDEO" as const,
+                  }
+                : s,
+            ),
+          };
+        }
+        return {
+          ...ep,
+          servers: [
+            ...ep.servers,
+            {
+              id: genId(),
+              name: "R2",
+              embedUrl: item.playbackUrl,
+              playbackUrl: item.playbackUrl,
+              objectKey: item.objectKey,
+              sourceType: "DIRECT_VIDEO",
+              storageProvider: "R2",
+              subtitleUrl: "",
+              vastTagUrl: "",
+              mimeType: "",
+              priority: ep.servers.length,
+              isActive: true,
+            },
+          ],
+        };
+      });
+    });
+    setR2MoviePickerOpen(false);
+  }, []);
+
+  const handleR2SubApply = useCallback((items: R2SubApplyItem[]) => {
+    if (items.length === 0) return;
+    setEpisodes((prev) =>
+      prev.map((ep) => {
+        const item = items.find(
+          (i: R2SubApplyItem) => i.episodeNumber === ep.episodeNumber,
+        );
+        if (!item) return ep;
+        return { ...ep, subtitleUrl: item.subtitleUrl };
+      }),
+    );
+    setR2SubPickerOpen(false);
+  }, []);
+
   const updateServer = (
     episodeId: string,
     serverId: string,
     field: keyof ServerRow,
-    value: ServerRow[keyof ServerRow]
+    value: ServerRow[keyof ServerRow],
   ) => {
     setEpisodes((prev) =>
       prev.map((e) =>
@@ -242,91 +343,12 @@ export default function EditMoviePage() {
           ? {
               ...e,
               servers: e.servers.map((s) =>
-                s.id === serverId ? { ...s, [field]: value } : s
+                s.id === serverId ? { ...s, [field]: value } : s,
               ),
             }
-          : e
-      )
+          : e,
+      ),
     );
-  };
-
-  const uploadVideoForServer = async (
-    episode: EpisodeRow,
-    server: ServerRow,
-    file: File,
-  ) => {
-    if (!slugInput.trim()) {
-      setMessage({
-        type: "error",
-        text: "Hãy điền slug phim trước khi upload video.",
-      });
-      return;
-    }
-
-    setUploadingByServerId((prev) => ({ ...prev, [server.id]: true }));
-    setMessage(null);
-    try {
-      const signRes = await fetch("/api/dashboard/r2/sign-upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          filename: file.name,
-          mimeType: file.type || "video/mp4",
-          sizeBytes: file.size,
-          channel: channel.trim() || "nsh",
-          movieSlug: slugInput.trim(),
-          episodeSlug: `tap-${episode.episodeNumber}`,
-        }),
-      });
-      const signData = await signRes.json().catch(() => ({}));
-      if (!signRes.ok) {
-        setMessage({
-          type: "error",
-          text: signData.error ?? "Không tạo được URL upload R2.",
-        });
-        return;
-      }
-
-      const uploadRes = await fetch(signData.uploadUrl as string, {
-        method: "PUT",
-        headers: { "Content-Type": file.type || "video/mp4" },
-        body: file,
-      });
-      if (!uploadRes.ok) {
-        setMessage({ type: "error", text: "Upload video lên R2 thất bại." });
-        return;
-      }
-
-      updateServer(episode.id, server.id, "name", server.name || "R2");
-      updateServer(
-        episode.id,
-        server.id,
-        "embedUrl",
-        signData.publicPlaybackUrl as string,
-      );
-      updateServer(
-        episode.id,
-        server.id,
-        "playbackUrl",
-        signData.publicPlaybackUrl as string,
-      );
-      updateServer(
-        episode.id,
-        server.id,
-        "objectKey",
-        signData.objectKey as string,
-      );
-      updateServer(episode.id, server.id, "sourceType", "DIRECT_VIDEO");
-      updateServer(episode.id, server.id, "storageProvider", "R2");
-      updateServer(episode.id, server.id, "mimeType", file.type || "video/mp4");
-      updateServer(episode.id, server.id, "fileSizeBytes", file.size);
-      setMessage({
-        type: "success",
-        text: `Upload video thành công cho tập ${episode.episodeNumber}.`,
-      });
-    } finally {
-      setUploadingByServerId((prev) => ({ ...prev, [server.id]: false }));
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -339,6 +361,7 @@ export default function EditMoviePage() {
         title: title.trim(),
         slug: slugInput.trim() || undefined,
         channel: channel.trim() || "nsh",
+        audioType,
         originalTitle: originalTitle.trim() || undefined,
         description: description.trim() || undefined,
         poster: poster.trim() || undefined,
@@ -350,9 +373,11 @@ export default function EditMoviePage() {
         episodes: episodes.map((ep) => ({
           episodeNumber: ep.episodeNumber,
           name: ep.name.trim() || undefined,
+          subtitleUrl: ep.subtitleUrl?.trim() || undefined,
           servers: ep.servers
             .filter(
-              (s) => s.name.trim() && (s.playbackUrl.trim() || s.embedUrl.trim()),
+              (s) =>
+                s.name.trim() && (s.playbackUrl.trim() || s.embedUrl.trim()),
             )
             .map((s, i) => ({
               name: s.name.trim(),
@@ -376,7 +401,7 @@ export default function EditMoviePage() {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
-        }
+        },
       );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -398,7 +423,7 @@ export default function EditMoviePage() {
   const handleDelete = async () => {
     if (!slug) return;
     const confirmed = window.confirm(
-      "Bạn có chắc muốn xóa phim này? Hành động không thể hoàn tác."
+      "Bạn có chắc muốn xóa phim này? Hành động không thể hoàn tác.",
     );
     if (!confirmed) return;
     setDeleting(true);
@@ -408,7 +433,7 @@ export default function EditMoviePage() {
         `/api/dashboard/movies/${encodeURIComponent(slug)}`,
         {
           method: "DELETE",
-        }
+        },
       );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -434,7 +459,10 @@ export default function EditMoviePage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/dashboard/admin/movies" aria-label="Trở về danh sách phim">
+          <Link
+            href="/dashboard/admin/movies"
+            aria-label="Trở về danh sách phim"
+          >
             <ArrowLeft className="size-4" />
           </Link>
         </Button>
@@ -618,6 +646,26 @@ export default function EditMoviePage() {
               </select>
             </div>
             <div className="flex flex-col gap-2 sm:col-span-2">
+              <label
+                htmlFor="audioType"
+                className="text-sm font-medium text-foreground"
+              >
+                Loại phim
+              </label>
+              <select
+                id="audioType"
+                value={audioType}
+                onChange={(e) =>
+                  setAudioType(e.target.value as "NONE" | "SUB" | "DUBBED")
+                }
+                className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="NONE">Không xác định</option>
+                <option value="SUB">Phim sub</option>
+                <option value="DUBBED">Phim lồng tiếng</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-2 sm:col-span-2">
               <span className="text-sm font-medium text-foreground">
                 Thể loại
               </span>
@@ -675,16 +723,40 @@ export default function EditMoviePage() {
             <h2 className="text-lg font-semibold text-foreground">
               Tập phim & Link server
             </h2>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={addEpisode}
-              className="inline-flex items-center gap-2"
-            >
-              <Plus className="size-4" />
-              Thêm tập
-            </Button>
+            <div className="flex items-center gap-2">
+              {audioType === "SUB" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setR2SubPickerOpen(true)}
+                  className="inline-flex items-center gap-2"
+                >
+                  <Subtitles className="size-4" />
+                  Gắn R2 sub cho các tập
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setR2MoviePickerOpen(true)}
+                className="inline-flex items-center gap-2"
+              >
+                <Cloud className="size-4" />
+                Gắn R2 cho tất cả tập
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addEpisode}
+                className="inline-flex items-center gap-2"
+              >
+                <Plus className="size-4" />
+                Thêm tập
+              </Button>
+            </div>
           </div>
           <p className="text-sm text-muted-foreground">
             Mỗi tập có thể có nhiều server. Điền tên server và link embed
@@ -711,7 +783,7 @@ export default function EditMoviePage() {
                         updateEpisode(
                           ep.id,
                           "episodeNumber",
-                          Number(e.target.value) || 1
+                          Number(e.target.value) || 1,
                         )
                       }
                       className="w-20 rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
@@ -739,6 +811,28 @@ export default function EditMoviePage() {
                       <Trash2 className="size-4" />
                     </Button>
                   </div>
+
+                  {audioType === "SUB" && (
+                    <div className="mb-3 flex flex-col gap-1">
+                      <label
+                        htmlFor={`sub-${ep.id}`}
+                        className="text-xs font-medium text-muted-foreground"
+                      >
+                        Link sub tập {ep.episodeNumber}
+                      </label>
+                      <input
+                        id={`sub-${ep.id}`}
+                        type="url"
+                        value={ep.subtitleUrl ?? ""}
+                        onChange={(e) =>
+                          updateEpisode(ep.id, "subtitleUrl", e.target.value)
+                        }
+                        className="rounded-md border border-input bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+                        placeholder="https://..."
+                      />
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-medium text-muted-foreground">
@@ -773,11 +867,11 @@ export default function EditMoviePage() {
                                 ep.id,
                                 srv.id,
                                 "name",
-                                e.target.value
+                                e.target.value,
                               )
                             }
                             className="w-28 rounded border border-input bg-background px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
-                            placeholder="Tên (VD: MixDrop)"
+                            placeholder="VD: R2 Storage"
                           />
                           <input
                             type="url"
@@ -787,30 +881,12 @@ export default function EditMoviePage() {
                                 ep.id,
                                 srv.id,
                                 "embedUrl",
-                                e.target.value
+                                e.target.value,
                               )
                             }
                             className="min-w-0 flex-1 rounded border border-input bg-background px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
-                            placeholder="https://cdn.com/video.mp4?sub=https%3A%2F%2Fcdn.com%2Fsub.vtt&vast=https%3A%2F%2Fadtag..."
+                            placeholder="https://cdn.com/video.mp4?"
                           />
-                          <label className="inline-flex cursor-pointer items-center gap-1 rounded border border-border px-2 py-1 text-xs hover:bg-accent">
-                            Upload
-                            <input
-                              type="file"
-                              accept="video/*"
-                              className="hidden"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                void uploadVideoForServer(ep, srv, file);
-                              }}
-                            />
-                          </label>
-                          {uploadingByServerId[srv.id] && (
-                            <span className="text-xs text-muted-foreground">
-                              Uploading...
-                            </span>
-                          )}
                           <Button
                             type="button"
                             variant="ghost"
@@ -848,6 +924,18 @@ export default function EditMoviePage() {
           </Button>
         </div>
       </form>
+      <R2SubtitleFolderPickerModal
+        open={r2SubPickerOpen}
+        onClose={() => setR2SubPickerOpen(false)}
+        episodes={episodes.map((ep) => ({ episodeNumber: ep.episodeNumber }))}
+        onApply={handleR2SubApply}
+      />
+      <R2MovieFolderPickerModal
+        open={r2MoviePickerOpen}
+        onClose={() => setR2MoviePickerOpen(false)}
+        episodes={episodes.map((ep) => ({ episodeNumber: ep.episodeNumber }))}
+        onApply={handleR2Apply}
+      />
     </div>
   );
 }

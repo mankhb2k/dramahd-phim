@@ -33,8 +33,12 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const prefixParam =
+      parsed.data.prefix === ""
+        ? ""
+        : (parsed.data.prefix ?? "videos/");
     const result = await listR2Objects({
-      prefix: parsed.data.prefix ?? "videos/",
+      prefix: prefixParam,
       search: parsed.data.search ?? undefined,
       continuationToken: parsed.data.continuationToken ?? undefined,
       bucket: parsed.data.bucket ?? undefined,

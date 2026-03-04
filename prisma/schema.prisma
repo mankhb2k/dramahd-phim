@@ -17,6 +17,12 @@ enum MovieStatus {
   COMPLETED
 }
 
+enum MovieAudioType {
+  NONE
+  SUB
+  DUBBED
+}
+
 enum StorageProvider {
   EXTERNAL
   R2
@@ -82,9 +88,10 @@ model Movie {
   poster        String?
   backdrop      String?
 
-  year   Int?
-  status MovieStatus @default(ONGOING)
-  views  Int         @default(0)
+  year       Int?
+  status     MovieStatus    @default(ONGOING)
+  audioType  MovieAudioType @default(NONE)
+  views      Int            @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -106,6 +113,7 @@ model Episode {
   episodeNumber Int
   slug          String?
   watchSlug     String?
+  subtitleUrl   String?
 
   createdAt DateTime @default(now())
 

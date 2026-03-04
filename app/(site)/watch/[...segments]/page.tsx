@@ -146,7 +146,9 @@ async function handleTreePath(parts: string[]) {
           <VideoJsPlayer
             src={parsedPrimarySource.src}
             subtitleSrc={
-              primaryServer?.subtitleUrl ?? parsedPrimarySource.subtitleSrc
+              currentEpisode.subtitleUrl ??
+              primaryServer?.subtitleUrl ??
+              parsedPrimarySource.subtitleSrc
             }
             subtitleLabel={parsedPrimarySource.subtitleLabel}
             subtitleLang={parsedPrimarySource.subtitleLang}

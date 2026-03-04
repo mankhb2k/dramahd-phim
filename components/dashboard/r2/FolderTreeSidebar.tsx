@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, FolderTree } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, naturalCompare } from "@/lib/utils";
 import { useR2ManagerStore, R2FolderItem } from "@/lib/stores/r2-manager-store";
 
 interface FolderTreeSidebarProps {
@@ -51,12 +51,48 @@ export function FolderTreeSidebar({
     if (sortByName === "a-z") {
       list = list
         .slice()
-        .sort((a: R2FolderItem, b: R2FolderItem) =>
-          a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
-        );
+        .sort((a: R2FolderItem, b: R2FolderItem) => naturalCompare(a.name, b.name));
     }
     return list;
   }, [folders, currentPrefix, sortByName]);
+
+  const folderPrefixesKey = useMemo(
+    () => directChildFolders.map((f: R2FolderItem) => f.prefix).join("\0"),
+    [directChildFolders],
+  );
+
+  const [folderCounts, setFolderCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (!bucketSlug || directChildFolders.length === 0) {
+      setFolderCounts({});
+      return;
+    }
+    const abort = new AbortController();
+    const newCounts: Record<string, number> = {};
+    let done = 0;
+    const total = directChildFolders.length;
+    directChildFolders.forEach((folder: R2FolderItem) => {
+      fetch(
+        `/api/dashboard/r2/objects/count?bucket=${encodeURIComponent(bucketSlug)}&prefix=${encodeURIComponent(folder.prefix)}`,
+        { signal: abort.signal },
+      )
+        .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Failed"))))
+        .then((data: { count?: number }) => {
+          newCounts[folder.prefix] = typeof data.count === "number" ? data.count : 0;
+        })
+        .catch(() => {
+          newCounts[folder.prefix] = -1;
+        })
+        .finally(() => {
+          done += 1;
+          if (done === total) {
+            setFolderCounts((prev) => ({ ...prev, ...newCounts }));
+          }
+        });
+    });
+    return () => abort.abort();
+  }, [bucketSlug, folderPrefixesKey]);
 
   const parentHref = ((): string | null => {
     if (!baseHref || isAtRoot) return null;
@@ -153,8 +189,15 @@ export function FolderTreeSidebar({
                           isActive && "bg-accent text-foreground",
                         )}
                       >
-                        <ChevronRight className="size-3 text-muted-foreground" />
-                        <span>{folder.name}</span>
+                        <ChevronRight className="size-3 shrink-0 text-muted-foreground" />
+                        <span className="min-w-0 truncate">
+                          {folder.name}
+                          {folder.prefix in folderCounts && folderCounts[folder.prefix] >= 0 && (
+                            <span className="ml-1 text-muted-foreground">
+                              ({folderCounts[folder.prefix].toLocaleString("vi-VN")})
+                            </span>
+                          )}
+                        </span>
                       </Link>
                     </div>
                   );
