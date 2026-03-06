@@ -62,7 +62,7 @@ function canAccessDashboardApi(pathname: string, role: AuthRole): boolean {
   return role === "ADMIN" || role === "EDITOR";
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isDashboard = isDashboardRoute(pathname);
