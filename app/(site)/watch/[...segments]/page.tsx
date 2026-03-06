@@ -9,7 +9,6 @@ import {
 import { EpisodeSwitcher } from "@/components/watch/EpisodeSwitcher";
 import { VideoJsPlayer } from "@/components/watch/VideoPlayer";
 import { WatchPageAd } from "@/components/ads/WatchPageAd";
-import { StickyBanner } from "@/components/ads/StickyBannerAds";
 import { ArrowLeft } from "lucide-react";
 
 interface WatchCatchAllPageProps {
@@ -209,8 +208,6 @@ async function handleTreePath(parts: string[]) {
           </ul>
         </div>
       )}
-
-      <StickyBanner />
     </div>
   );
 }
