@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Facebook, Youtube, Instagram } from "lucide-react";
 
 const footerLinks = {
@@ -37,12 +38,16 @@ export function Footer() {
           <div className="space-y-4">
             <Link
               href="/"
-              className="inline-flex items-center gap-2 text-lg font-bold text-primary"
+              className="inline-flex items-center"
+              aria-label="Drama Phim - Trang chủ"
             >
-              <span className="rounded bg-primary px-2 py-0.5 text-primary-foreground">
-                Drama
-              </span>
-              <span>Phim</span>
+              <Image
+                src="/dramahd-logo.svg"
+                alt="Drama Phim"
+                width={140}
+                height={24}
+                className="h-6 w-auto"
+              />
             </Link>
             <p className="text-sm text-muted-foreground">
               Xem phim online miễn phí, chất lượng cao. Cập nhật nhanh nhất.
@@ -68,16 +73,18 @@ export function Footer() {
               Thể loại phim
             </h3>
             <ul className="space-y-3">
-              {footerLinks.phim.map((link: (typeof footerLinks.phim)[number]) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
+              {footerLinks.phim.map(
+                (link: (typeof footerLinks.phim)[number]) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ),
+              )}
             </ul>
           </div>
 
@@ -87,16 +94,18 @@ export function Footer() {
               Hỗ trợ
             </h3>
             <ul className="space-y-3">
-              {footerLinks.hoTro.map((link: (typeof footerLinks.hoTro)[number]) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
+              {footerLinks.hoTro.map(
+                (link: (typeof footerLinks.hoTro)[number]) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ),
+              )}
             </ul>
           </div>
 
@@ -106,16 +115,18 @@ export function Footer() {
               Pháp lý
             </h3>
             <ul className="space-y-3">
-              {footerLinks.phapLy.map((link: (typeof footerLinks.phapLy)[number]) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
+              {footerLinks.phapLy.map(
+                (link: (typeof footerLinks.phapLy)[number]) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ),
+              )}
             </ul>
           </div>
         </div>
@@ -129,15 +140,17 @@ export function Footer() {
             © {currentYear} Drama Phim. All rights reserved.
           </p>
           <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
-            {footerLinks.phapLy.map((link: (typeof footerLinks.phapLy)[number]) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {link.label}
-              </Link>
-            ))}
+            {footerLinks.phapLy.map(
+              (link: (typeof footerLinks.phapLy)[number]) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {link.label}
+                </Link>
+              ),
+            )}
           </div>
         </div>
       </div>

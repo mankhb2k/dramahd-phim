@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown, Search, User } from "lucide-react";
@@ -157,12 +158,17 @@ export function Header() {
           <div className="flex h-12 min-h-12 min-w-0 items-center gap-2 py-2">
             <Link
               href="/"
-              className="flex shrink-0 items-center gap-1.5 text-base font-bold text-primary"
+              className="flex shrink-0 items-center"
+              aria-label="Drama Phim - Trang chủ"
             >
-              <span className="rounded bg-primary px-1.5 py-0.5 text-primary-foreground">
-                Drama
-              </span>
-              <span className="truncate">Phim</span>
+              <Image
+                src="/dramahd-logo.svg"
+                alt="Drama Phim"
+                width={120}
+                height={20}
+                className="h-5 w-auto"
+                priority
+              />
             </Link>
             <div className="flex min-w-0 flex-1 items-center gap-2">
               <input
@@ -223,12 +229,17 @@ export function Header() {
           <div className="flex h-14 min-h-14 items-center gap-4 py-2">
             <Link
               href="/"
-              className="flex shrink-0 items-center gap-2 text-lg font-bold text-primary"
+              className="flex shrink-0 items-center"
+              aria-label="Drama Phim - Trang chủ"
             >
-              <span className="rounded bg-primary px-2 py-0.5 text-primary-foreground">
-                Drama
-              </span>
-              <span>Phim</span>
+              <Image
+                src="/dramahd-logo.svg"
+                alt="Drama Phim"
+                width={140}
+                height={24}
+                className="h-6 w-auto"
+                priority
+              />
             </Link>
             <div className="flex min-w-0 flex-1 items-center gap-2">
               <input
