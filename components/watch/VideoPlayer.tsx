@@ -83,6 +83,7 @@ export function VideoJsPlayer({
   );
   const hideControlsTimerRef = useRef<number | null>(null);
   const suppressRevealUntilRef = useRef<number>(0);
+  const lastTouchHandledRef = useRef<number>(0);
   const scrollLockRef = useRef<{
     scrollY: number;
     htmlOverflow: string;
@@ -128,6 +129,16 @@ export function VideoJsPlayer({
   };
 
   const handleWrapperPointer = (e: React.MouseEvent | React.TouchEvent) => {
+    const isTouch = e.nativeEvent.type.startsWith("touch");
+    const isClick = e.nativeEvent.type === "click";
+    // Trên mobile: touch xong trình duyệt còn fire thêm click → gọi 2 lần gây nhấp nháy. Bỏ qua click nếu vừa xử lý touch.
+    if (isClick && Date.now() - lastTouchHandledRef.current < 400) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    if (isTouch) lastTouchHandledRef.current = Date.now();
+
     const target = e.target as Node;
     const isControlsArea =
       target instanceof Element &&
@@ -136,8 +147,13 @@ export function VideoJsPlayer({
       revealControls();
       return;
     }
+    // Chạm vùng trống: đang phát thì toggle (hiện → ẩn ngay, ẩn → hiện); dừng thì hiện
     if (isPlaying) {
-      hideControlsImmediately();
+      if (isControlsVisible) {
+        hideControlsImmediately();
+      } else {
+        revealControls();
+      }
     } else {
       revealControls();
     }

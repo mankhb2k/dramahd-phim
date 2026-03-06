@@ -176,7 +176,7 @@
 /* Phụ đề ArtPlayer: cao lên trên, text wrap trong khung, chữ trắng viền đen */
 .art-drama-player .art-subtitle {
   position: absolute !important;
-  bottom: 30% !important;
+  bottom: 20% !important;
   left: 20% !important;
   right: 20% !important;
   max-width: 60% !important;
@@ -188,7 +188,7 @@
   overflow-wrap: break-word !important;
   line-height: 1.4 !important;
   font-size: 1.5em !important;
-  font-weight: 700 !important;
+  font-weight: 500 !important;
 }
 .art-drama-player .art-subtitle:empty {
   display: none !important;

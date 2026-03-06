@@ -146,33 +146,33 @@ async function handleTreePath(parts: string[]) {
       <div className="flex min-w-0 max-w-full flex-col items-center gap-2">
         <WatchPageAd />
         <div className="relative mx-auto aspect-square w-full min-w-0 max-w-full overflow-hidden rounded-xl bg-black sm:max-w-3xl">
-        {canUseVideoJs && parsedPrimarySource ? (
-          <VideoJsPlayer
-            src={parsedPrimarySource.src}
-            subtitleSrc={
-              currentEpisode.subtitleUrl ??
-              primaryServer?.subtitleUrl ??
-              parsedPrimarySource.subtitleSrc
-            }
-            subtitleLabel={parsedPrimarySource.subtitleLabel}
-            subtitleLang={parsedPrimarySource.subtitleLang}
-            vastTagUrl={
-              primaryServer?.vastTagUrl ?? parsedPrimarySource.vastTagUrl
-            }
-          />
-        ) : primarySourceUrl ? (
-          <iframe
-            src={primarySourceUrl}
-            title={`${movie.title} - Tập ${currentEpisode.episodeNumber}`}
-            className="absolute inset-0 size-full"
-            allowFullScreen
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          />
-        ) : (
-          <div className="flex size-full items-center justify-center text-muted-foreground">
-            Chưa có link xem cho tập này.
-          </div>
-        )}
+          {canUseVideoJs && parsedPrimarySource ? (
+            <VideoJsPlayer
+              src={parsedPrimarySource.src}
+              subtitleSrc={
+                currentEpisode.subtitleUrl ??
+                primaryServer?.subtitleUrl ??
+                parsedPrimarySource.subtitleSrc
+              }
+              subtitleLabel={parsedPrimarySource.subtitleLabel}
+              subtitleLang={parsedPrimarySource.subtitleLang}
+              vastTagUrl={
+                primaryServer?.vastTagUrl ?? parsedPrimarySource.vastTagUrl
+              }
+            />
+          ) : primarySourceUrl ? (
+            <iframe
+              src={primarySourceUrl}
+              title={`${movie.title} - Tập ${currentEpisode.episodeNumber}`}
+              className="absolute inset-0 size-full"
+              allowFullScreen
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            />
+          ) : (
+            <div className="flex size-full items-center justify-center text-muted-foreground">
+              Chưa có link xem cho tập này.
+            </div>
+          )}
         </div>
       </div>
 
