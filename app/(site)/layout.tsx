@@ -1,6 +1,5 @@
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { StickyBanner } from "@/components/ads/StickyBannerAds";
 
 export default function SiteLayout({
   children,
@@ -14,7 +13,6 @@ export default function SiteLayout({
         </div>
       </main>
       <Footer />
-      <StickyBanner />
     </div>
   );
 }
