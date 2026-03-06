@@ -151,11 +151,11 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full min-w-0 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <div className="container mx-auto min-w-0 max-w-full px-4 sm:px-6 lg:px-8">
+      <div className="container mx-auto min-w-0 max-w-full px-2 sm:px-6 lg:px-8">
         {/* ---------- MOBILE: Hàng 1 = Logo + Search, Hàng 2 = Thể loại + Dropdown + Profile ---------- */}
         <div className="flex min-w-0 flex-col sm:hidden">
           {/* Mobile row 1: brand + search */}
-          <div className="flex h-12 min-h-12 min-w-0 items-center gap-2 py-2">
+          <div className="flex h-12 min-h-12 min-w-0 items-center gap-2 py-2 px-2">
             <Link
               href="/"
               className="flex shrink-0 items-center"
