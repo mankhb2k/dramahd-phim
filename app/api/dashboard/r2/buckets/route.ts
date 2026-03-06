@@ -66,9 +66,13 @@ export async function GET() {
         return NextResponse.json({ error: msg }, { status: res.status });
       }
 
-      let raw = data.result ?? data.buckets;
+      type RawBucketList =
+        | Array<{ name: string; creation_date: string }>
+        | Record<string, { name?: string; creation_date?: string }>
+        | undefined;
+      let raw: RawBucketList = data.result ?? data.buckets;
       if (raw && typeof raw === "object" && !Array.isArray(raw) && "buckets" in raw) {
-        raw = (raw as { buckets?: unknown }).buckets;
+        raw = (raw as { buckets?: RawBucketList }).buckets;
       }
       if (Array.isArray(raw)) {
         for (const item of raw) {
@@ -81,9 +85,9 @@ export async function GET() {
         }
       } else if (raw && typeof raw === "object" && !Array.isArray(raw)) {
         const entries = Object.entries(raw).map(
-          ([name, item]: [string, { name?: string; creation_date?: string }]) => ({
-            name: (item && typeof item === "object" && item.name) ?? name,
-            creation_date: (item && typeof item === "object" && item.creation_date) ?? "",
+          ([key, item]: [string, { name?: string; creation_date?: string }]) => ({
+            name: String((item && typeof item === "object" && item.name) ?? key),
+            creation_date: String((item && typeof item === "object" && item.creation_date) ?? ""),
           }),
         );
         allBuckets.push(...entries);
