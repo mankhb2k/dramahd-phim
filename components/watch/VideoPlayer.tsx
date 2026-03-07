@@ -583,26 +583,26 @@ export function VideoJsPlayer({
                   aria-label="Âm lượng"
                 />
 
-                {theaterModeCtx && (
-                  <button
-                    type="button"
-                    onClick={theaterModeCtx.toggleTheaterMode}
-                    className={`md:hidden inline-flex size-8 items-center justify-center rounded-full transition-colors hover:bg-white/25 ${
-                      theaterModeCtx.theaterMode
-                        ? "bg-white/25 text-amber-400"
-                        : "bg-white/15"
-                    }`}
-                    aria-label={
-                      theaterModeCtx.theaterMode
-                        ? "Thoát chế độ rạp chiếu phim"
-                        : "Chế độ rạp chiếu phim"
-                    }
-                    title="Chế độ rạp chiếu phim"
-                  >
-                    <Film className="size-4" />
-                  </button>
-                )}
                 <div className="ml-auto flex items-center gap-2">
+                  {theaterModeCtx && (
+                    <button
+                      type="button"
+                      onClick={theaterModeCtx.toggleTheaterMode}
+                      className={`inline-flex size-8 items-center justify-center rounded-full transition-colors hover:bg-white/25 md:hidden ${
+                        theaterModeCtx.theaterMode
+                          ? "bg-white/25 text-amber-400"
+                          : "bg-white/15"
+                      }`}
+                      aria-label={
+                        theaterModeCtx.theaterMode
+                          ? "Thoát chế độ rạp chiếu phim"
+                          : "Chế độ rạp chiếu phim"
+                      }
+                      title="Chế độ rạp chiếu phim"
+                    >
+                      <Film className="size-4" />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setIsSettingsOpen((prev: boolean) => !prev)}
