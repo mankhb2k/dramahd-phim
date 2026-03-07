@@ -449,7 +449,7 @@ export function VideoJsPlayer({
     >
       <div
         ref={containerRef}
-        className="absolute inset-0 size-full rounded-xl [&_.art-video-player]:!rounded-xl"
+        className="absolute inset-0 size-full rounded-xl [&_.art-video-player]:!rounded-xl [&_.art-bottom]:!hidden [&_.art-center]:!hidden"
       />
 
       {isReady && (
@@ -587,7 +587,7 @@ export function VideoJsPlayer({
                   <button
                     type="button"
                     onClick={theaterModeCtx.toggleTheaterMode}
-                    className={`md:hidden ml-auto inline-flex size-8 items-center justify-center rounded-full transition-colors hover:bg-white/25 ${
+                    className={`md:hidden inline-flex size-8 items-center justify-center rounded-full transition-colors hover:bg-white/25 ${
                       theaterModeCtx.theaterMode
                         ? "bg-white/25 text-amber-400"
                         : "bg-white/15"
@@ -602,32 +602,34 @@ export function VideoJsPlayer({
                     <Film className="size-4" />
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={() => setIsSettingsOpen((prev: boolean) => !prev)}
-                  className="relative inline-flex size-8 items-center justify-center rounded-full bg-white/15 transition-colors hover:bg-white/25"
-                  aria-label="Mở cài đặt phát video"
-                >
-                  <Settings className="size-4" />
-                  <span className="pointer-events-none absolute -right-0.5 -top-0.5 rounded bg-red-600 px-1 text-[9px] font-semibold leading-3 text-white shadow">
-                    HD
-                  </span>
-                </button>
+                <div className="ml-auto flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsSettingsOpen((prev: boolean) => !prev)}
+                    className="relative inline-flex size-8 items-center justify-center rounded-full bg-white/15 transition-colors hover:bg-white/25"
+                    aria-label="Mở cài đặt phát video"
+                  >
+                    <Settings className="size-4" />
+                    <span className="pointer-events-none absolute -right-0.5 -top-0.5 rounded bg-red-600 px-1 text-[9px] font-semibold leading-3 text-white shadow">
+                      HD
+                    </span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={toggleFullscreen}
-                  className="inline-flex size-8 items-center justify-center rounded-full bg-white/15 transition-colors hover:bg-white/25"
-                  aria-label={
-                    isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"
-                  }
-                >
-                  {isFullscreen ? (
-                    <Minimize className="size-4" />
-                  ) : (
-                    <Maximize className="size-4" />
-                  )}
-                </button>
+                  <button
+                    type="button"
+                    onClick={toggleFullscreen}
+                    className="inline-flex size-8 items-center justify-center rounded-full bg-white/15 transition-colors hover:bg-white/25"
+                    aria-label={
+                      isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"
+                    }
+                  >
+                    {isFullscreen ? (
+                      <Minimize className="size-4" />
+                    ) : (
+                      <Maximize className="size-4" />
+                    )}
+                  </button>
+                </div>
 
                 {isSettingsOpen && (
                   <div className="absolute bottom-10 right-4 z-40 min-w-52 space-y-3 rounded-lg border border-white/20 bg-black/85 p-3 text-xs shadow-xl backdrop-blur-md">
