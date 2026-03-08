@@ -86,6 +86,8 @@ export function VideoJsPlayer({
   const hideControlsTimerRef = useRef<number | null>(null);
   const suppressRevealUntilRef = useRef<number>(0);
   const lastTouchHandledRef = useRef<number>(0);
+  const isSeekingRef = useRef(false);
+  const lastTimeUpdateRef = useRef(0);
   const scrollLockRef = useRef<{
     scrollY: number;
     htmlOverflow: string;
@@ -187,6 +189,7 @@ export function VideoJsPlayer({
   const onSeek = (nextTime: number) => {
     const art = playerRef.current;
     if (!art || art.isDestroy) return;
+    setCurrentTime(nextTime);
     art.currentTime = nextTime;
   };
 
@@ -299,7 +302,7 @@ export function VideoJsPlayer({
       playerRef.current = art;
 
       const syncState = () => {
-        setCurrentTime(art.currentTime);
+        if (!isSeekingRef.current) setCurrentTime(art.currentTime);
         setDuration(art.duration);
         setVolume(art.volume);
         setIsMuted(art.muted);
@@ -321,7 +324,14 @@ export function VideoJsPlayer({
           noticeEl.style.setProperty("visibility", "hidden", "important");
         }
 
-        art.on("video:timeupdate", syncState);
+        art.on("video:timeupdate", () => {
+          if (isSeekingRef.current) return;
+          const now = Date.now();
+          if (now - lastTimeUpdateRef.current >= 80) {
+            lastTimeUpdateRef.current = now;
+            setCurrentTime(art.currentTime);
+          }
+        });
         art.on("video:durationchange", syncState);
         art.on("video:volumechange", syncState);
         art.on("video:play", () => {
@@ -533,19 +543,32 @@ export function VideoJsPlayer({
                     className="absolute inset-y-0 left-0 rounded-full bg-zinc-300"
                     style={{ width: `${progressPercent}%` }}
                   />
-                  <input
-                    type="range"
-                    min={0}
-                    max={duration || 0}
-                    step={0.1}
-                    value={Math.min(currentTime, duration || 0)}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                      onSeek(Number(e.target.value))
-                    }
-                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                    aria-label="Thanh thời lượng video"
-                  />
                 </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={duration || 0}
+                  step={0.1}
+                  value={Math.min(currentTime, duration || 0)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    onSeek(Number(e.target.value))
+                  }
+                  onPointerDown={() => {
+                    isSeekingRef.current = true;
+                  }}
+                  onPointerUp={() => {
+                    isSeekingRef.current = false;
+                    const art = playerRef.current;
+                    if (art && !art.isDestroy) setCurrentTime(art.currentTime);
+                  }}
+                  onPointerLeave={() => {
+                    isSeekingRef.current = false;
+                    const art = playerRef.current;
+                    if (art && !art.isDestroy) setCurrentTime(art.currentTime);
+                  }}
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                  aria-label="Thanh thời lượng video"
+                />
                 <div
                   className="pointer-events-none absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-zinc-300 bg-white shadow-md"
                   style={{ left: `${progressPercent}%` }}
